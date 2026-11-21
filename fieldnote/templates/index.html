@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f3ed">
+  <title>Fieldnote — A workspace with memory</title>
+  <link rel="icon" href="{{ url_for('static', filename='fieldnote.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Fieldnote</span></div>
+    <nav aria-label="Workspace views">
+      <button id="show-chat" aria-pressed="true">Workspace</button>
+      <button id="show-library" aria-pressed="false">Memory library</button>
+    </nav>
+    <button class="button demo-button" id="open-demo"><span aria-hidden="true">▷</span> Try the demo</button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" aria-label="Sessions">
+      <div class="sidebar-top">
+        <div class="section-label">SESSION LOG</div>
+        <button class="button new-button" id="new-session"><span aria-hidden="true">+</span> New session</button>
+      </div>
+      <div id="sessions" class="session-list"></div>
+      <div class="engine">
+        <div class="section-label">CONTEXT ENGINE</div>
+        <div class="engine-label"><span class="status-dot" aria-hidden="true"></span><strong id="engine-name">Connecting…</strong></div>
+        <p id="engine-details"></p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="chat" class="chat" aria-label="Conversation">
+        <header class="session-bar">
+          <div class="session-heading">
+            <strong id="session-title">Workspace</strong>
+            <span id="session-agent" class="agent"></span>
+          </div>
+          <button class="quiet-button" id="delete-session">Delete chat</button>
+        </header>
+        <div class="chat-scroll" id="chat-scroll">
+          <div class="welcome" id="welcome">
+            <span class="welcome-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <h1>Pick up where<br><em>you left off.</em></h1>
+            <p>Ask a question and see which memories and past conversations informed the answer.</p>
+            <button class="prompt-card" id="welcome-demo">
+              <span class="prompt-icon" aria-hidden="true">↗</span>
+              <span><strong>Run the Atlas demo</strong><small>Hand off a project between two assistants.</small></span>
+              <span class="prompt-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div id="turns" class="turns" aria-live="polite"></div>
+        </div>
+        <div class="compose-wrap">
+          <form id="compose" class="compose">
+            <label class="visually-hidden" for="question">Ask Fieldnote</label>
+            <textarea id="question" name="question" rows="2" maxlength="4000" placeholder="Ask about a past decision or preference…" required></textarea>
+            <div class="compose-actions">
+              <label class="recall-control"><input type="checkbox" id="recall" checked> Recall</label>
+              <button class="button primary" id="send" type="submit">Send <span aria-hidden="true">↑</span></button>
+            </div>
+          </form>
+          <div class="compose-caption"><span id="responder"></span><span>Enter to send · Shift+Enter for a new line</span></div>
+        </div>
+      </section>
+
+      <section id="library" class="library" aria-labelledby="library-title" hidden>
+        <header class="library-heading">
+          <div>
+            <h1 id="library-title">Memory library</h1>
+            <p>Review and manage facts, preferences, and decisions.</p>
+          </div>
+          <button class="button primary" id="add-memory">+ Add memory</button>
+        </header>
+        <form class="search-form" id="search-form" role="search">
+          <label for="search" class="visually-hidden">Search memories</label>
+          <input id="search" type="search" maxlength="300" placeholder="Search your memories">
+          <button class="button" type="submit">Search</button>
+          <button class="quiet-button" id="clear-search" type="button" hidden>Clear</button>
+        </form>
+        <div id="memory-list" aria-live="polite"></div>
+        <div class="pagination" id="pagination" hidden>
+          <button id="page-back" class="button">Previous</button>
+          <span id="page-label"></span>
+          <button id="page-next" class="button">Next</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="inspector" id="inspector" aria-labelledby="inspector-title">
+      <header class="inspector-heading">
+        <span class="trace-mark" aria-hidden="true">⌘</span>
+        <div><h2 id="inspector-title">Recall inspector</h2><p>Evidence behind the selected turn</p></div>
+      </header>
+      <div id="trace"></div>
+    </aside>
+  </div>
+
+  <div id="notice" class="notice" role="status" hidden></div>
+
+  <dialog id="session-dialog" aria-labelledby="session-dialog-title">
+    <form id="session-form">
+      <h2 id="session-dialog-title">New session</h2>
+      <label for="title">Session name</label>
+      <input id="title" name="title" maxlength="80" required placeholder="e.g. Atlas kickoff">
+      <label for="agent">Assistant</label>
+      <select id="agent" name="agent"></select>
+      <div class="dialog-actions">
+        <button class="button" type="button" data-close="session-dialog">Cancel</button>
+        <button class="button primary" type="submit">Create session</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="memory-dialog" aria-labelledby="memory-dialog-title">
+    <form id="memory-form">
+      <h2 id="memory-dialog-title">Add a memory</h2>
+      <label for="kind">Type</label>
+      <select id="kind" name="kind">
+        <option value="fact">Fact</option>
+        <option value="preference">Preference</option>
+        <option value="decision">Decision</option>
+      </select>
+      <label for="memory-text">What should Fieldnote remember?</label>
+      <textarea id="memory-text" name="text" rows="4" maxlength="1500" required placeholder="I prefer one-page kickoff briefs."></textarea>
+      <div class="dialog-actions">
+        <button class="button" type="button" data-close="memory-dialog">Cancel</button>
+        <button class="button primary" type="submit">Save memory</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Confirm deletion</h2>
+      <p id="confirm-description"></p>
+      <div class="dialog-actions">
+        <button class="button" value="cancel" autofocus>Cancel</button>
+        <button class="button danger-button" value="delete">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="demo-dialog" aria-labelledby="demo-title">
+    <div class="section-label">GUIDED DEMO</div>
+    <h2 id="demo-title">The Atlas handoff</h2>
+    <p>The demo adds sample data to your current workspace.</p>
+    <ol class="demo-steps">
+      <li><strong>Planner · Atlas planning</strong><span>Saves a date, a brief preference, and a pilot decision in a chat.</span></li>
+      <li><strong>Brief writer · Atlas follow-up</strong><span>Opens a fresh session with a question ready to send.</span></li>
+      <li><strong>Recall inspector</strong><span>Check the citations, then run the same question with recall off.</span></li>
+    </ol>
+    <div class="dialog-actions">
+      <button class="button" type="button" data-close="demo-dialog">Cancel</button>
+      <button class="button primary" id="load-demo" type="button">Load Atlas demo</button>
+    </div>
+  </dialog>
+</body>
+</html>
